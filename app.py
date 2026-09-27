@@ -5,7 +5,9 @@ import logging
 import os
 import time
 import uuid
+from collections import deque
 from datetime import datetime, timezone
+from threading import Lock
 
 from flask import Flask, g, jsonify, render_template, request
 
@@ -30,6 +32,8 @@ def create_app():
     app = Flask(__name__)
     app.config["START_TIME"] = time.monotonic()
     app.config["ENABLE_DEMO_ERRORS"] = os.getenv("ENABLE_DEMO_ERRORS") == "1"
+    measurements = {"requests": 0, "http_5xx": 0, "latencies_ms": deque(maxlen=100), "last_5xx_at": None}
+    measurements_lock = Lock()
 
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
@@ -46,6 +50,12 @@ def create_app():
     @app.after_request
     def log_request(response):
         duration_ms = round((time.monotonic() - g.started_at) * 1000, 2)
+        with measurements_lock:
+            measurements["requests"] += 1
+            measurements["latencies_ms"].append(duration_ms)
+            if response.status_code >= 500:
+                measurements["http_5xx"] += 1
+                measurements["last_5xx_at"] = datetime.now(timezone.utc).isoformat()
         response.headers["X-Request-ID"] = g.request_id
         app.logger.info(
             "request_complete",
@@ -65,15 +75,24 @@ def create_app():
 
     @app.get("/api/health")
     def health():
-        return jsonify(status="healthy", service="cloudpulse-ai")
+        # A 200 response proves this Flask process answered; it is not a full health verdict.
+        return jsonify(service="cloudpulse-ai", check="process_responding")
 
     @app.get("/api/status")
     def status():
+        with measurements_lock:
+            latencies = measurements["latencies_ms"]
+            observed = {
+                "requests_since_start": measurements["requests"],
+                "http_5xx_since_start": measurements["http_5xx"],
+                "avg_response_ms_last_100": round(sum(latencies) / len(latencies), 2) if latencies else None,
+                "last_5xx_at": measurements["last_5xx_at"],
+            }
         return jsonify(
             service="cloudpulse-ai",
-            status="running",
-            uptime_seconds=round(time.monotonic() - app.config["START_TIME"], 1),
+            process_uptime_seconds=round(time.monotonic() - app.config["START_TIME"], 1),
             checked_at=datetime.now(timezone.utc).isoformat(),
+            **observed,
         )
 
     @app.get("/api/demo/error")

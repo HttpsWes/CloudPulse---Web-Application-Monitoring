@@ -12,7 +12,7 @@
       <h1>Application monitor</h1>
       <p>This local app generates health, status, and error events for future monitoring.</p>
       <section class="card" aria-live="polite">
-        <h2>Current application status</h2>
+        <h2>Observed activity</h2>
         <p id="status">Checking…</p>
         <button id="refresh" type="button">Refresh status</button>
       </section>
@@ -26,7 +26,8 @@
           const response = await fetch('/api/status');
           if (!response.ok) throw new Error(`HTTP ${response.status}`);
           const data = await response.json();
-          label.textContent = `${data.status} · uptime ${data.uptime_seconds}s`;
+          const average = data.avg_response_ms_last_100 === null ? 'no samples' : `${data.avg_response_ms_last_100} ms`;
+          label.textContent = `Uptime ${data.process_uptime_seconds}s · Requests ${data.requests_since_start} · HTTP 5xx ${data.http_5xx_since_start} · Avg response ${average}`;
         } catch {
           label.textContent = 'Unavailable';
         }

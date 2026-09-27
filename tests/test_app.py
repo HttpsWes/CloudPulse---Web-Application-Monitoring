@@ -13,12 +13,15 @@ class AppTests(unittest.TestCase):
     def test_health_and_status(self):
         health = self.client.get("/api/health")
         self.assertEqual(health.status_code, 200)
-        self.assertEqual(health.json["status"], "healthy")
+        self.assertEqual(health.json["check"], "process_responding")
         self.assertIn("X-Request-ID", health.headers)
 
         status = self.client.get("/api/status")
         self.assertEqual(status.status_code, 200)
-        self.assertGreaterEqual(status.json["uptime_seconds"], 0)
+        self.assertGreaterEqual(status.json["process_uptime_seconds"], 0)
+        self.assertEqual(status.json["requests_since_start"], 1)
+        self.assertEqual(status.json["http_5xx_since_start"], 0)
+        self.assertIsNotNone(status.json["avg_response_ms_last_100"])
 
     def test_error_route_is_disabled_by_default(self):
         self.assertEqual(self.client.get("/api/demo/error").status_code, 404)
@@ -29,6 +32,9 @@ class AppTests(unittest.TestCase):
             response = self.client.get("/api/demo/error")
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json["request_id"], response.headers["X-Request-ID"])
+        status = self.client.get("/api/status")
+        self.assertEqual(status.json["http_5xx_since_start"], 1)
+        self.assertIsNotNone(status.json["last_5xx_at"])
         log.assert_called_once()
         self.assertEqual(
             self.client.get("/api/demo/error", environ_base={"REMOTE_ADDR": "203.0.113.2"}).status_code,
