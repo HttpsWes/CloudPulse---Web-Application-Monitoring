@@ -1,0 +1,12 @@
+:root { font-family: system-ui, sans-serif; color: #e8edf7; background: #0d1728; }
+body { margin: 0; padding: 8vh 24px; }
+main { max-width: 640px; margin: auto; }
+h1 { font-size: clamp(2.5rem, 7vw, 4rem); margin: .2em 0; }
+p { line-height: 1.6; color: #b7c5da; }
+.eyebrow { color: #66d6ba; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.card { background: #17263b; border: 1px solid #304660; border-radius: 16px; padding: 24px; margin-top: 32px; }
+.card h2 { margin-top: 0; font-size: 1.2rem; }
+#status { color: #66d6ba; font-size: 1.4rem; font-weight: bold; }
+button { cursor: pointer; border: 0; border-radius: 8px; padding: 12px 18px; background: #66d6ba; color: #102238; font-weight: bold; }
+a { color: #91c8ff; }
+.links { margin-top: 24px; }
